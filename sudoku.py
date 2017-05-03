@@ -5,6 +5,7 @@ import sys
 from bs4 import BeautifulSoup
 
 # future features:
+# fix the weird "missing" bug!!!
 
 # development goals:
 # reduce copied code -- more functions?
