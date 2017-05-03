@@ -1,11 +1,10 @@
 import requests
 import threading
+import string
+import sys
 from bs4 import BeautifulSoup
 
 # future features:
-# solve sudoku from text file in (almost) any format
-# solve a specific websudoku using url format below --
-# http://www.websudoku.com/?level=1&set_id=6215216293
 
 # development goals:
 # reduce copied code -- more functions?
@@ -13,7 +12,19 @@ from bs4 import BeautifulSoup
 # more efficient within threads
 # comments and style guide stuff
 
-def get_sudoku():
+def select_board():
+    if len(sys.argv) == 1:
+        return get_rand_sudoku()
+    elif len(sys.argv) == 2:
+        try:
+            int(sys.argv[1])
+            return get_ID_sudoku(sys.argv[1])
+        except:
+            return get_file_sudoku(sys.argv[1])
+    else:
+        return False
+
+def get_rand_sudoku():
     url = "http://show.websudoku.com/?level=1"
     response = requests.post(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -32,6 +43,44 @@ def get_sudoku():
     print_sudoku(puzzle)
     
     return puzzle
+
+def get_ID_sudoku(pid):
+    url = "http://show.websudoku.com/?level=1&set_id=" + str(pid)
+    response = requests.post(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    cheat = (soup.find('input', attrs={'name':'cheat', 'id':'cheat', 'type':'hidden'}))['value']
+    editmask = (soup.find('input', attrs={'id':'editmask', 'type':'hidden'}))['value']
+
+    puzzle = ""
+    for i in range(len(cheat)):
+        if not int(editmask[i]):
+            puzzle += cheat[i]
+        else:
+            puzzle += "0"
+
+    print("Easy puzzle #", pid, " from websudoku.com:", sep = "")
+    print_sudoku(puzzle)
+    
+    return puzzle
+
+def get_file_sudoku(filename):
+    try:
+        fin = open(filename)
+    except:
+        print("Invalid file name. Exiting...")
+        return False
+    
+    text = fin.read() 
+    table = str.maketrans("", "", string.punctuation + string.ascii_letters + string.whitespace)
+    text = text.translate(table)
+    if len(text) != 81:
+        print("Invalid puzzle. Exiting...")
+        return False
+    
+    print("Custom puzzle:")
+    print_sudoku(text)
+    
+    return text
 
 def print_sudoku(puzzle): 
     for i in range(len(puzzle)):
@@ -214,7 +263,10 @@ def solve_row_missing(index, matrix):
         missing = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
         present = get_row(index, matrix)
         for val in present:
-            missing.remove(val)
+            try:
+                missing.remove(val)
+            except:
+                print("-", val, "-", missing)
         
         empty = []
         for i in range(9):
@@ -360,10 +412,11 @@ def solve_sudoku(puzzle):
     return puzzle
 
 def main():
-    board = get_sudoku()
-    board = solve_sudoku(board)
-    print("\nSOLUTION:")
-    print_sudoku(board)
+    board = select_board()
+    if (board):
+        board = solve_sudoku(board)
+        print("\nSOLUTION:")
+        print_sudoku(board)
     
 if __name__ == '__main__':
     main()
